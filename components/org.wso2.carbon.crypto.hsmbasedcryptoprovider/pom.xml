@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>crypto-service-parent</artifactId>
+        <groupId>org.wso2.carbon.crypto</groupId>
+        <version>1.0.3-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>org.wso2.carbon.crypto.hsmbasedcryptoprovider</artifactId>
+    <packaging>bundle</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.iaik</groupId>
+            <artifactId>pkcs11wrapper</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/resources/lib/iaikPkcs11Wrapper.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.crypto</groupId>
+            <artifactId>org.wso2.carbon.crypto.api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon</groupId>
+            <artifactId>org.wso2.carbon.base</artifactId>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>
+                            ${project.artifactId}
+                        </Bundle-SymbolicName>
+                        <Private-Package>org.wso2.carbon.crypto.hsmbasedcryptoprovider.internal</Private-Package>
+                        <Import-Package>
+                            org.wso2.carbon.crypto.api; version="${carbon.crypto.api.imp.pkg.version.range}",
+                            *;resolution:=optional
+                        </Import-Package>
+                        <Export-Package>
+                            !org.wso2.carbon.crypto.hsmbasedcryptoprovider.internal,
+                            org.wso2.carbon.crypto.hsmbasedcryptoprovider.*;version="${carbon.crypto.package.export.version}",
+                        </Export-Package>
+                        <DynamicImport-package>*</DynamicImport-package>
+                    </instructions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <properties>
+        <carbon.crypto.api.imp.pkg.version.range>[1.0.0,1.1.0)</carbon.crypto.api.imp.pkg.version.range>
+    </properties>
+
+</project>
