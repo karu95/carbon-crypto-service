@@ -7,12 +7,11 @@ import org.wso2.carbon.crypto.api.KeyResolver;
 import org.wso2.carbon.crypto.api.PrivateKeyInfo;
 
 /**
- *
+ * Implementation of {@link KeyResolver} to resolve keys and certificates from the HSM.
  */
 public class HSMBasedKeyResolver extends KeyResolver {
 
     public HSMBasedKeyResolver(ServerConfigurationService serverConfigurationService) {
-
     }
 
     @Override

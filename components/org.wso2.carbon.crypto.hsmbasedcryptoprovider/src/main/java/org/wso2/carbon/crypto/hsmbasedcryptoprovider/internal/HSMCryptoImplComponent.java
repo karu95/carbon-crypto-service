@@ -17,7 +17,7 @@ import org.wso2.carbon.crypto.hsmbasedcryptoprovider.HSMBasedInternalCryptoProvi
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.HSMBasedKeyResolver;
 
 /**
- *
+ * The class which is used for deal with the OSGi runtime for service registration and injection.
  */
 @Component(
         name = "org.wso2.carbon.crypto.hsmbasedcryptoprovider",
@@ -37,7 +37,9 @@ public class HSMCryptoImplComponent {
     public void activate(ComponentContext context) {
 
         if (!isCryptoServiceEnabled()) {
-            log.info("CryptoService is not enabled.");
+            if (log.isDebugEnabled()) {
+                log.debug("CryptoService is not enabled.");
+            }
             return;
         }
 
@@ -46,11 +48,13 @@ public class HSMCryptoImplComponent {
             registerProviderImplementations(bundleContext);
         } catch (Throwable e) {
             String errorMessage = "An error occurred while activating 'org.wso2.carbon.crypto.hsmbasedcryptoprovider'.";
-            log.error(errorMessage, e);
+            if (log.isErrorEnabled()) {
+                log.error(errorMessage, e);
+            }
         }
 
         if (log.isInfoEnabled()) {
-            log.info("'org.wso2.carbon.crypto.hsmbasedcryptoprovider' bundle has been activated.");
+            log.info("HSM Based crypto provider has been activated successfully.");
         }
     }
 
@@ -133,6 +137,4 @@ public class HSMCryptoImplComponent {
 
         this.serverConfigurationService = null;
     }
-
-
 }

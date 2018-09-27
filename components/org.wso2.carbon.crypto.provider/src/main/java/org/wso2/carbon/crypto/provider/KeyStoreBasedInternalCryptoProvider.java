@@ -24,19 +24,12 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.crypto.api.CryptoException;
 import org.wso2.carbon.crypto.api.InternalCryptoProvider;
 
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.Certificate;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import java.security.*;
+import java.security.cert.Certificate;
 
 /**
  * The Java Keystore based implementation of {@link InternalCryptoProvider}
@@ -99,7 +92,7 @@ public class KeyStoreBasedInternalCryptoProvider implements InternalCryptoProvid
                     "Java Security API provider '%s'", algorithm, javaSecurityAPIProvider);
 
             // Log the exception from client libraries, to avoid missing information if callers code doesn't log it
-            if(log.isDebugEnabled()){
+            if (log.isDebugEnabled()) {
                 log.debug(errorMessage, e);
             }
 
@@ -141,7 +134,7 @@ public class KeyStoreBasedInternalCryptoProvider implements InternalCryptoProvid
                     , algorithm);
 
             // Log the exception from client libraries, to avoid missing information if callers code doesn't log it
-            if(log.isDebugEnabled()){
+            if (log.isDebugEnabled()) {
                 log.debug(errorMessage, e);
             }
 

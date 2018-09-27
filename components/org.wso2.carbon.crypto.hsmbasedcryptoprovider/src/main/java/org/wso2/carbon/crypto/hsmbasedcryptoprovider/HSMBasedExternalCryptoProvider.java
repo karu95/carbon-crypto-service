@@ -28,7 +28,7 @@ import java.security.spec.RSAPrivateKeySpec;
 import static org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.CryptoConstants.*;
 
 /**
- *
+ * Implementation of {@link ExternalCryptoProvider} to provide cryptographic operations using Hardware Security Modules.
  */
 public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
 
@@ -43,6 +43,7 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
 
     public HSMBasedExternalCryptoProvider(ServerConfigurationService serverConfigurationService)
             throws CryptoException {
+
         sessionHandler = SessionHandler.getDefaultSessionHandler(serverConfigurationService);
         this.serverConfigurationService = serverConfigurationService;
         mechanismResolver = new MechanismResolver();
@@ -60,8 +61,11 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         Mechanism signMechanism = mechanismResolver.resolveMechanism(SIGN_MODE, algorithm, data);
         Session session = initiateSession();
         SignatureHandler signatureHandler = new SignatureHandler();
-        byte[] sign = signatureHandler.sign(session, data, signingKey, signMechanism);
-        return sign;
+        try {
+            return signatureHandler.sign(session, data, signingKey, signMechanism);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
     }
 
     @Override
@@ -74,10 +78,13 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         privateKeyTemplate.getLabel().setCharArrayValue(privateKeyInfo.getKeyAlias().toCharArray());
         PrivateKey decryptionKey = (PrivateKey) retrieveKey(privateKeyTemplate);
         Mechanism decryptionMechanism = mechanismResolver.resolveMechanism(DECRYPT_MODE, algorithm, ciphertext);
-        Session session = initiateSession();
         Cipher cipher = new Cipher();
-        byte[] clearText = cipher.decrypt(session, ciphertext, decryptionKey, decryptionMechanism);
-        return clearText;
+        Session session = initiateSession();
+        try {
+            return cipher.decrypt(session, ciphertext, decryptionKey, decryptionMechanism);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
     }
 
     @Override
@@ -94,8 +101,11 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         Mechanism encryptionMechanism = mechanismResolver.resolveMechanism(ENCRYPT_MODE, algorithm, data);
         Cipher cipher = new Cipher();
         Session session = initiateSession();
-        byte[] cipherText = cipher.encrypt(session, data, encryptionKey, encryptionMechanism);
-        return cipherText;
+        try {
+            return cipher.encrypt(session, data, encryptionKey, encryptionMechanism);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
     }
 
     @Override
@@ -113,9 +123,11 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         Mechanism verifyMechanism = mechanismResolver.resolveMechanism(VERIFY_MODE, algorithm, data);
         SignatureHandler signatureHandler = new SignatureHandler();
         Session session = initiateSession();
-        boolean verification = signatureHandler.verify(session, data, signature, verificationKey, verifyMechanism);
-
-        return verification;
+        try {
+            return signatureHandler.verify(session, data, signature, verificationKey, verifyMechanism);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
     }
 
     @Override
@@ -124,23 +136,21 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
 
         failIfContextInformationIsMissing(cryptoContext);
 
-        java.security.cert.Certificate certificate = null;
         Certificate retrievedCertificate = retrieveCertificate(certificateInfo.getCertificateAlias());
         try {
             if (retrievedCertificate instanceof X509PublicKeyCertificate) {
                 byte[] x509Certificate = ((X509PublicKeyCertificate) retrievedCertificate)
                         .getValue().getByteArrayValue();
 
-                certificate = CertificateFactory.getInstance("X.509").generateCertificate(
+                return CertificateFactory.getInstance("X.509").generateCertificate(
                         new ByteArrayInputStream(x509Certificate));
             }
+            return null;
         } catch (CertificateException e) {
-            throw new CryptoException();
+            String errorMessage = String.format("Error occurred while generating X.509 certificate from the " +
+                    "retrieved certificate from the HSM.");
+            throw new CryptoException(errorMessage, e);
         }
-        if (certificate == null) {
-            throw new CryptoException();
-        }
-        return certificate;
     }
 
     @Override
@@ -150,46 +160,52 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         failIfContextInformationIsMissing(cryptoContext);
 
         java.security.PrivateKey privateKey = null;
-
         PrivateKey privateKeyTemplate = new PrivateKey();
         privateKeyTemplate.getLabel().setCharArrayValue(privateKeyInfo.getKeyAlias().toCharArray());
         privateKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PRIVATE_KEY);
         PrivateKey retrievedKey = (PrivateKey) retrieveKey(privateKeyTemplate);
+        String keyGenerationAlgorithm = null;
         try {
             if (!retrievedKey.getSensitive().getBooleanValue() && retrievedKey.getExtractable().getBooleanValue()) {
-
                 if (retrievedKey instanceof RSAPrivateKey) {
                     RSAPrivateKey retrievedRSAKey = (RSAPrivateKey) retrievedKey;
                     BigInteger privateExponent = new BigInteger(retrievedRSAKey.
                             getPrivateExponent().getByteArrayValue());
                     BigInteger modulus = new BigInteger(retrievedRSAKey.getModulus().getByteArrayValue());
-                    privateKey = KeyFactory.getInstance("RSA").generatePrivate(new
+                    keyGenerationAlgorithm = "RSA";
+                    privateKey = KeyFactory.getInstance(keyGenerationAlgorithm).generatePrivate(new
                             RSAPrivateKeySpec(modulus, privateExponent));
                 }
             } else {
-                throw new CryptoException();
+                throw new CryptoException("Requested private key is not extractable.");
             }
         } catch (InvalidKeySpecException e) {
-            throw new CryptoException();
+            String errorMessage = String.format("Provided key specification is invalid for key alias '%s'",
+                    privateKeyInfo.getKeyAlias());
+            throw new CryptoException(errorMessage, e);
         } catch (NoSuchAlgorithmException e) {
-            throw new CryptoException();
+            String errorMessage = String.format("Invalid key generation algorithm '%s'.", keyGenerationAlgorithm);
+            throw new CryptoException(errorMessage, e);
         }
         return privateKey;
     }
 
-    private Session initiateSession() throws CryptoException {
+    protected Session initiateSession() throws CryptoException {
+
         return sessionHandler.initiateSession(
-                Integer.valueOf(serverConfigurationService.getFirstProperty(EXTERNAL_PROVIDER_SLOT_PROPERTY_PATH)));
+                Integer.parseInt(serverConfigurationService.getFirstProperty(EXTERNAL_PROVIDER_SLOT_PROPERTY_PATH)));
     }
 
-    private void failIfContextInformationIsMissing(CryptoContext cryptoContext) throws CryptoException {
+    protected void failIfContextInformationIsMissing(CryptoContext cryptoContext) throws CryptoException {
+
         if (cryptoContext.getTenantId() == 0 || StringUtils.isBlank(cryptoContext.getTenantDomain())) {
             throw new CryptoException("Tenant information is missing in the crypto context.");
         }
     }
 
-    private void failIfMethodParametersInvalid(String algorithm, String javaSecurityProvider) throws CryptoException {
-        if (!(javaSecurityProvider != null && javaSecurityProvider.equals("HSMBasedProvider"))) {
+    protected void failIfMethodParametersInvalid(String algorithm, String javaSecurityProvider) throws CryptoException {
+
+        if (!(javaSecurityProvider != null && javaSecurityProvider.equals("BC"))) {
             throw new CryptoException();
         }
 
@@ -198,24 +214,28 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         }
     }
 
-    private Key retrieveKey(Key keyTemplate) throws CryptoException {
+    protected Key retrieveKey(Key keyTemplate) throws CryptoException {
+
         KeyHandler keyHandler = new KeyHandler();
         Session session = initiateSession();
-        Key retrievedKey = (Key) keyHandler.retrieveKey(session, keyTemplate);
-        sessionHandler.closeSession(session);
-        return retrievedKey;
+        try {
+            return (Key) keyHandler.retrieveKey(session, keyTemplate);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
     }
 
-    private Certificate retrieveCertificate(String label) throws CryptoException {
-        Session session = initiateSession();
+    protected Certificate retrieveCertificate(String label) throws CryptoException {
+
         CertificateHandler certificateHandler = new CertificateHandler();
         Certificate certificateTemplate = new Certificate();
         certificateTemplate.getLabel().setCharArrayValue(label.toCharArray());
-        Certificate retrievedCertificate =
-                (Certificate) certificateHandler.getCertificate(session, certificateTemplate);
-        if (retrievedCertificate == null) {
-            throw new CryptoException();
+        certificateTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_CERTIFICATE);
+        Session session = initiateSession();
+        try {
+            return (Certificate) certificateHandler.getCertificate(session, certificateTemplate);
+        } finally {
+            sessionHandler.closeSession(session);
         }
-        return retrievedCertificate;
     }
 }

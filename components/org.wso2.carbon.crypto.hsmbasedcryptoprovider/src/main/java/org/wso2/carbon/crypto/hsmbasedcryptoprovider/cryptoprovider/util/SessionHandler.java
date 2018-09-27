@@ -23,7 +23,7 @@ public class SessionHandler {
             "CryptoService.HSMBasedCryptoProviderConfig.HSMConfiguration.SlotConfiguration";
     private static SessionHandler sessionHandler;
 
-    private Slot[] slotsWithTokens = null;
+    private Slot[] slotsWithTokens;
     private Module pkcs11Module;
     private ServerConfigurationService serverConfigurationService;
     private HashMap<Integer, String> configuredSlots = new HashMap<>();
@@ -37,6 +37,7 @@ public class SessionHandler {
      */
     public static SessionHandler getDefaultSessionHandler(ServerConfigurationService serverConfigurationService)
             throws CryptoException {
+
         if (sessionHandler == null) {
             sessionHandler = new SessionHandler(serverConfigurationService);
         }
@@ -44,10 +45,15 @@ public class SessionHandler {
     }
 
     private SessionHandler(ServerConfigurationService serverConfigurationService) throws CryptoException {
+        String pkcs11ModulePath = serverConfigurationService.getFirstProperty(PKCS11_MODULE_PROPERTY_PATH);
         try {
-            pkcs11Module = Module.getInstance(serverConfigurationService.getFirstProperty(PKCS11_MODULE_PROPERTY_PATH));
+            pkcs11Module = Module.getInstance(pkcs11ModulePath);
+            pkcs11Module.initialize(null);
         } catch (IOException e) {
-            throw new CryptoException();
+            String errorMessage = String.format("Unable to locate PKCS #11 Module in path '%s'.", pkcs11ModulePath);
+            throw new CryptoException(errorMessage, e);
+        } catch (TokenException e) {
+            throw new HSMCryptoException("PKCS #11 Module initialization failed.", e);
         }
         this.serverConfigurationService = serverConfigurationService;
         setupSlotConfiguration();
@@ -61,12 +67,14 @@ public class SessionHandler {
      * @throws CryptoException
      */
     public Session initiateSession(int slotNo) throws CryptoException {
-        Session session = null;
+
+        Session session;
         if (slotsWithTokens == null) {
             try {
                 slotsWithTokens = pkcs11Module.getSlotList(Module.SlotRequirement.TOKEN_PRESENT);
             } catch (TokenException e) {
-                throw new CryptoException("Session initiation error : " + e.getMessage());
+                String errorMessage = String.format("Failed to retrieve slots with tokens.");
+                throw new HSMCryptoException(errorMessage, e);
             }
         }
         if (slotsWithTokens.length > slotNo) {
@@ -77,10 +85,12 @@ public class SessionHandler {
                         Token.SessionReadWriteBehavior.RW_SESSION, null, null);
                 session.login(Session.UserType.USER, getUserPIN(slotNo));
             } catch (TokenException e) {
-                throw new CryptoException("Session initiation error : " + e.getMessage());
+                String errorMessage = String.format("Session initiation failed for slot id : '%d' ", slotNo);
+                throw new HSMCryptoException(errorMessage, e);
             }
         } else {
-            throw new CryptoException("Slot is not configured for cryptographic operations.");
+            String errorMessage = String.format("Slot '%d' is not configured for cryptographic operations.", slotNo);
+            throw new CryptoException(errorMessage);
         }
         return session;
     }
@@ -92,20 +102,25 @@ public class SessionHandler {
      * @throws CryptoException
      */
     public void closeSession(Session session) throws CryptoException {
+
         if (session != null) {
             try {
                 session.closeSession();
             } catch (TokenException e) {
-                throw new CryptoException("Error occurred during session closing : " + e.getMessage());
+                String errorMessage = "Error occurred during session termination.";
+                throw new CryptoException(errorMessage);
             }
         }
     }
 
     private char[] getUserPIN(int slotID) throws CryptoException {
+
         if (configuredSlots.containsKey(slotID)) {
             return configuredSlots.get(slotID).toCharArray();
         } else {
-            throw new CryptoException("Slot configuration is not provided.");
+            String errorMessage = String.format("Unable to retrieve slot configuration information for slot id " +
+                    "'%d'.", slotID);
+            throw new CryptoException(errorMessage);
         }
     }
 
@@ -119,7 +134,7 @@ public class SessionHandler {
                 Node configuredSlot = configuredSlots.item(i);
                 if (configuredSlot.getNodeType() == Node.ELEMENT_NODE && "Slot".equals(configuredSlot.getNodeName())) {
                     NamedNodeMap attributes = configuredSlot.getAttributes();
-                    int id = Integer.valueOf(attributes.getNamedItem("id").getTextContent());
+                    int id = Integer.parseInt(attributes.getNamedItem("id").getTextContent());
                     String pin = attributes.getNamedItem("pin").getTextContent();
                     if (!this.configuredSlots.containsKey(id)) {
                         this.configuredSlots.put(id, pin);
@@ -127,7 +142,8 @@ public class SessionHandler {
                 }
             }
         } else {
-            throw new CryptoException("Slot configuration is not provided.");
+            String errorMessage = "Unable to retrieve slot configuration information.";
+            throw new CryptoException(errorMessage);
         }
     }
 }

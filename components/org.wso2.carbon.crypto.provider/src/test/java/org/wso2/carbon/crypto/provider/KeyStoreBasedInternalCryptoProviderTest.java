@@ -23,11 +23,11 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.crypto.Cipher;
 import java.io.File;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import javax.crypto.Cipher;
 
 import static org.testng.Assert.assertEquals;
 

@@ -24,14 +24,14 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.crypto.api.CryptoException;
 import org.wso2.carbon.crypto.api.InternalCryptoProvider;
 
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 
 /**
  * The symmetric key implementation of {@link InternalCryptoProvider}
@@ -75,7 +75,7 @@ public class SymmetricKeyInternalCryptoProvider implements InternalCryptoProvide
                     , algorithm);
 
             // Log the exception from client libraries, to avoid missing information if callers code doesn't log it
-            if(log.isDebugEnabled()){
+            if (log.isDebugEnabled()) {
                 log.debug(errorMessage, e);
             }
 
@@ -112,7 +112,7 @@ public class SymmetricKeyInternalCryptoProvider implements InternalCryptoProvide
                     , algorithm);
 
             // Log the exception from client libraries, to avoid missing information if callers code doesn't log it
-            if(log.isDebugEnabled()){
+            if (log.isDebugEnabled()) {
                 log.debug(errorMessage, e);
             }
 

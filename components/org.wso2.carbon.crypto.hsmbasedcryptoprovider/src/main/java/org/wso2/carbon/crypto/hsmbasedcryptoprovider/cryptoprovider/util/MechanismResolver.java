@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Random;
 
 /**
- * This class is used to resolve JCE standard mechanisms to PKCS #11 mechanisms.
+ * This class is used to resolve JCE standard mechanism names to PKCS #11 mechanisms.
  */
 public class MechanismResolver {
 
@@ -49,19 +49,20 @@ public class MechanismResolver {
         put("AES_192/GCM/NoPadding", PKCS11Constants.CKM_AES_GCM);
         put("AES_256/GCM/NoPadding", PKCS11Constants.CKM_AES_GCM);
 
+
         //RC2
 
 
         //RSA mechanisms
-        put("RSA/NONE/OAEPWithMD5AndMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
-        put("RSA/NONE/OAEPWithSHA1AndMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
-        put("RSA/NONE/OAEPWithSHA224AndMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
-        put("RSA/NONE/OAEPWithSHA256AndMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
-        put("RSA/NONE/OAEPWithSHA384AndMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
-        put("RSA/NONE/OAEPWithSHA512AndMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
-        put("RSA/NONE/PKCS1Padding", PKCS11Constants.CKM_RSA_PKCS);
-        put("RSA/NONE/NoPadding", PKCS11Constants.CKM_RSA_X_509);
-        put("RSA/NONE/ISO9796Padding", PKCS11Constants.CKM_RSA_9796);
+        put("RSA/ECB/OAEPwithMD5andMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
+        put("RSA/ECB/OAEPwithSHA1andMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
+        put("RSA/ECB/OAEPwithSHA224andMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
+        put("RSA/ECB/OAEPwithSHA256andMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
+        put("RSA/ECB/OAEPwithSHA384andMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
+        put("RSA/ECB/OAEPwithSHA512andMGF1Padding", PKCS11Constants.CKM_RSA_PKCS_OAEP);
+        put("RSA/ECB/PKCS1Padding", PKCS11Constants.CKM_RSA_PKCS);
+        put("RSA/ECB/NoPadding", PKCS11Constants.CKM_RSA_X_509);
+        put("RSA/ECB/ISO9796Padding", PKCS11Constants.CKM_RSA_9796);
 
         //Blowfish mechanisms
         put("Blowfish/CBC/NoPadding", PKCS11Constants.CKM_BLOWFISH_CBC);
@@ -116,6 +117,8 @@ public class MechanismResolver {
         put(PKCS11Constants.CKM_DES_CBC_PAD, "IV8");
     }};
 
+    private static final Random randomArrayGenerator = new Random();
+
     /**
      * Method to retrieve of mechanisms.
      *
@@ -131,7 +134,7 @@ public class MechanismResolver {
     /**
      * Method to resolve the mechanism when mechanism specification is given.
      *
-     * @param operatingMode              : Operation related to the mechanism.
+     * @param operatingMode          : Operation related to the mechanism.
      * @param mechanismSpecification : Standard JCE specified name of the mechanism.
      * @param data                   : Data used for cryptographic operation.
      * @return : Properly configured mechanism.
@@ -147,10 +150,10 @@ public class MechanismResolver {
         return mechanism;
     }
 
-    private void resolveParameters(Mechanism mechanism, String mechanismSpecification, int operatingMode, byte[] data) {
+    protected void resolveParameters(Mechanism mechanism, String mechanismSpecification, int operatingMode, byte[] data) {
         String parameterSpec = parameterRequiredMechanisms.get(mechanism.getMechanismCode());
         if (parameterSpec.contains("IV")) {
-            int ivSize = Integer.valueOf((String)
+            int ivSize = Integer.parseInt((String)
                     parameterSpec.subSequence(2, parameterSpec.length()));
             mechanism.setParameters(getInitializationVectorParameters(operatingMode, data, ivSize));
         } else if (parameterSpec.contains("OAEP")) {
@@ -159,9 +162,9 @@ public class MechanismResolver {
         }
     }
 
-    private RSAPkcsOaepParameters getOAEPParameters(String parameter) {
-        String[] specParams = parameter.split("With");
-        String[] oaepParams = specParams[1].split("And");
+    protected RSAPkcsOaepParameters getOAEPParameters(String parameter) {
+        String[] specParams = parameter.split("with");
+        String[] oaepParams = specParams[1].split("and");
         if (mechanisms.containsKey(oaepParams[0])) {
             return new RSAPkcsOaepParameters(Mechanism.get(mechanisms.get(oaepParams[0])), 1L,
                     PKCS11Constants.CKZ_DATA_SPECIFIED, null);
@@ -169,11 +172,11 @@ public class MechanismResolver {
         return null;
     }
 
-    private InitializationVectorParameters getInitializationVectorParameters(int operatingMode,
+    protected InitializationVectorParameters getInitializationVectorParameters(int operatingMode,
                                                                              byte[] data, int ivSize) {
         byte[] iv = new byte[ivSize];
         if (operatingMode == 1) {
-            new Random().nextBytes(iv);
+            randomArrayGenerator.nextBytes(iv);
         } else if (operatingMode == 2) {
             System.arraycopy(data, 0, iv, 0, ivSize);
         }

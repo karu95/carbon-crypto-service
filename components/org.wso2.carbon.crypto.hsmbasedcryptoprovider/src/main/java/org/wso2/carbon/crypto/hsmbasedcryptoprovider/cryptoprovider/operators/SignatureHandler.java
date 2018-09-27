@@ -6,9 +6,10 @@ import iaik.pkcs.pkcs11.TokenException;
 import iaik.pkcs.pkcs11.objects.PrivateKey;
 import iaik.pkcs.pkcs11.objects.PublicKey;
 import org.wso2.carbon.crypto.api.CryptoException;
+import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.HSMCryptoException;
 
 /**
- *
+ * This class is responsible for handling sign/verify operations.
  */
 public class SignatureHandler {
 
@@ -26,10 +27,11 @@ public class SignatureHandler {
      * @param signMechanism : Signing mechanism
      * @param signKey       : Key used for signing.
      * @return signature as a byte array.
-     * @throws TokenException
+     * @throws CryptoException
      */
     public byte[] sign(Session session, byte[] dataToSign,
                        PrivateKey signKey, Mechanism signMechanism) throws CryptoException {
+
         byte[] signature = null;
         if (signMechanism.isFullSignVerifyMechanism() ||
                 signMechanism.isSingleOperationSignVerifyMechanism()) {
@@ -37,7 +39,9 @@ public class SignatureHandler {
                 session.signInit(signMechanism, signKey);
                 signature = session.sign(dataToSign);
             } catch (TokenException e) {
-                throw new CryptoException("Sign generation error.", e);
+                String errorMessage = String.format("Error occurred during generating signature using algorithm '%s'" +
+                        ".", signMechanism.getName());
+                throw new HSMCryptoException(errorMessage, e);
             }
         }
         return signature;
@@ -55,6 +59,7 @@ public class SignatureHandler {
      */
     public boolean verify(Session session, byte[] dataToVerify, byte[] signature,
                           PublicKey verificationKey, Mechanism verifyMechanism) throws CryptoException {
+
         boolean verified = false;
         if (verifyMechanism.isFullSignVerifyMechanism()) {
             try {
@@ -63,7 +68,9 @@ public class SignatureHandler {
                 verified = true;
             } catch (TokenException e) {
                 if (!e.getMessage().equals("")) {
-                    throw new CryptoException("Sign verification error.", e);
+                    String errorMessage = String.format("Error occurred during verifying the signature using " +
+                            "algorithm '%s'", verifyMechanism.getName());
+                    throw new HSMCryptoException(errorMessage, e);
                 }
             }
         }

@@ -3,11 +3,15 @@ package org.wso2.carbon.crypto.hsmbasedcryptoprovider;
 import iaik.pkcs.pkcs11.Mechanism;
 import iaik.pkcs.pkcs11.Session;
 import iaik.pkcs.pkcs11.objects.Key;
+import iaik.pkcs.pkcs11.objects.PrivateKey;
+import iaik.pkcs.pkcs11.objects.PublicKey;
+import iaik.pkcs.pkcs11.wrapper.PKCS11Constants;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.base.api.ServerConfigurationService;
 import org.wso2.carbon.crypto.api.CryptoException;
+import org.wso2.carbon.crypto.api.ExternalCryptoProvider;
 import org.wso2.carbon.crypto.api.InternalCryptoProvider;
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.objecthandlers.KeyHandler;
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.operators.Cipher;
@@ -18,7 +22,7 @@ import static org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.
 import static org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.CryptoConstants.ENCRYPT_MODE;
 
 /**
- *
+ * Implementation of {@link InternalCryptoProvider} to provide cryptographic operations using Hardware Security Modules.
  */
 public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
 
@@ -40,6 +44,7 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
      */
     public HSMBasedInternalCryptoProvider(ServerConfigurationService serverConfigurationService)
             throws CryptoException {
+
         this.serverConfigurationService = serverConfigurationService;
         this.keyAlias = serverConfigurationService.getFirstProperty(HSM_BASED_INTERNAL_PROVIDER_KEY_ALIAS_PATH);
         if (StringUtils.isBlank(keyAlias)) {
@@ -54,67 +59,84 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
     public byte[] encrypt(byte[] cleartext, String algorithm, String javaSecurityAPIProvider) throws CryptoException {
 
         failIfMethodParametersInvalid(algorithm, javaSecurityAPIProvider, cleartext);
-
-        Key keyTemplate = new Key();
-        keyTemplate.getLabel().setCharArrayValue(keyAlias.toCharArray());
-        Key encryptionKey = retrieveKey(keyTemplate);
-        Session session = initiateSession();
+        PublicKey publicKeyTemplate = new PublicKey();
+        publicKeyTemplate.getLabel().setCharArrayValue(keyAlias.toCharArray());
+        publicKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PUBLIC_KEY);
+        PublicKey encryptionKey = (PublicKey) retrieveKey(publicKeyTemplate);
         Mechanism encryptionMechanism = mechanismResolver.resolveMechanism(ENCRYPT_MODE, algorithm, cleartext);
-        byte[] cipherData = cipher.encrypt(session, cleartext, encryptionKey, encryptionMechanism);
-        return cipherData;
+        Session session = initiateSession();
+        try {
+            return cipher.encrypt(session, cleartext, encryptionKey, encryptionMechanism);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
     }
 
     @Override
     public byte[] decrypt(byte[] ciphertext, String algorithm, String javaSecurityAPIProvider) throws CryptoException {
+
         failIfMethodParametersInvalid(algorithm, javaSecurityAPIProvider, ciphertext);
 
-        Key keyTemplate = new Key();
-        keyTemplate.getLabel().setCharArrayValue(keyAlias.toCharArray());
-        Key decryptionKey = retrieveKey(keyTemplate);
-        Session session = initiateSession();
+        PrivateKey privateKeyTemplate = new PrivateKey();
+        privateKeyTemplate.getLabel().setCharArrayValue(keyAlias.toCharArray());
+        privateKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PRIVATE_KEY);
+        PrivateKey decryptionKey = (PrivateKey) retrieveKey(privateKeyTemplate);
         Mechanism decryptionMechanism = mechanismResolver.resolveMechanism(DECRYPT_MODE, algorithm, ciphertext);
-        byte[] clearText = cipher.decrypt(session, ciphertext, decryptionKey, decryptionMechanism);
-        return clearText;
+        Session session = initiateSession();
+        try {
+            return cipher.decrypt(session, ciphertext, decryptionKey, decryptionMechanism);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
     }
 
-    private Session initiateSession() throws CryptoException {
+    protected Session initiateSession() throws CryptoException {
+
         return sessionHandler.initiateSession(
-                Integer.valueOf(serverConfigurationService.getFirstProperty(INTERNAL_PROVIDER_SLOT_PROPERTY_PATH)));
+                Integer.parseInt(serverConfigurationService.getFirstProperty(INTERNAL_PROVIDER_SLOT_PROPERTY_PATH)));
     }
 
 
-    private void failIfMethodParametersInvalid(String algorithm, String javaSecurityProvider, byte[] data)
+    protected void failIfMethodParametersInvalid(String algorithm, String javaSecurityProvider, byte[] data)
             throws CryptoException {
-        if (!(javaSecurityProvider != null && javaSecurityProvider.equals("HSMBasedProvider"))) {
-            String errorMessage = "Cryptographic operation provider is invalid.";
-            if (log.isErrorEnabled()) {
-                log.error(errorMessage);
+
+        if (!(javaSecurityProvider != null && javaSecurityProvider.equals("BC"))) {
+            String errorMessage = String.format("Cryptographic operation provider '%s' is not supported by the " +
+                    "provider.", javaSecurityProvider);
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
             }
             throw new CryptoException(errorMessage);
         }
 
         if (!(algorithm != null && MechanismResolver.getMechanisms().containsKey(algorithm))) {
-            String errorMessage = "Requested algorithm is not valid/not supported by the provider.";
-            if (log.isErrorEnabled()) {
-                log.error(errorMessage);
+            String errorMessage = String.format("Requested algorithm '%s' is not valid/not supported by the " +
+                    "provider '%s'.", algorithm, javaSecurityProvider);
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
             }
             throw new CryptoException(errorMessage);
         }
 
         if (data == null || data.length == 0) {
-            String errorMessage = "Data sent for cryptographic operation is not valid.";
-            if (log.isErrorEnabled()) {
-                log.error(errorMessage);
+            String errorMessage = String.format("Data sent for cryptographic operation is null/empty.");
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
             }
             throw new CryptoException(errorMessage);
         }
     }
 
-    private Key retrieveKey(Key keyTemplate) throws CryptoException {
+    protected Key retrieveKey(Key keyTemplate) throws CryptoException {
+
         KeyHandler keyHandler = new KeyHandler();
         Session session = initiateSession();
-        Key retrievedKey = (Key) keyHandler.retrieveKey(session, keyTemplate);
-        sessionHandler.closeSession(session);
+        Key retrievedKey;
+        try {
+            retrievedKey = (Key) keyHandler.retrieveKey(session, keyTemplate);
+        } finally {
+            sessionHandler.closeSession(session);
+        }
         return retrievedKey;
     }
 }
