@@ -11,7 +11,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.base.api.ServerConfigurationService;
 import org.wso2.carbon.crypto.api.CryptoException;
-import org.wso2.carbon.crypto.api.ExternalCryptoProvider;
 import org.wso2.carbon.crypto.api.InternalCryptoProvider;
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.objecthandlers.KeyHandler;
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.operators.Cipher;
@@ -40,6 +39,8 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
     private Cipher cipher;
 
     /**
+     * Constructor of HSMBasedInternalCryptoProvider. This is an asymmetric crypto provider.
+     *
      * @param serverConfigurationService
      */
     public HSMBasedInternalCryptoProvider(ServerConfigurationService serverConfigurationService)
@@ -110,7 +111,7 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
         }
 
         if (!(algorithm != null && MechanismResolver.getMechanisms().containsKey(algorithm))) {
-            String errorMessage = String.format("Requested algorithm '%s' is not valid/not supported by the " +
+            String errorMessage = String.format("Requested algorithm '%s' is not valid/supported by the " +
                     "provider '%s'.", algorithm, javaSecurityProvider);
             if (log.isDebugEnabled()) {
                 log.debug(errorMessage);

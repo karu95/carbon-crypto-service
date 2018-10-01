@@ -132,7 +132,7 @@ public class MechanismResolver {
     }
 
     /**
-     * Method to resolve the mechanism when mechanism specification is given.
+     * Method to resolve the PKCS #11 mechanism when JCE mechanism specification is given.
      *
      * @param operatingMode          : Operation related to the mechanism.
      * @param mechanismSpecification : Standard JCE specified name of the mechanism.

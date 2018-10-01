@@ -57,6 +57,7 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
 
         PrivateKey privateKeyTemplate = new PrivateKey();
         privateKeyTemplate.getLabel().setCharArrayValue(privateKeyInfo.getKeyAlias().toCharArray());
+        privateKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PRIVATE_KEY);
         PrivateKey signingKey = (PrivateKey) retrieveKey(privateKeyTemplate);
         Mechanism signMechanism = mechanismResolver.resolveMechanism(SIGN_MODE, algorithm, data);
         Session session = initiateSession();
@@ -76,6 +77,7 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
 
         PrivateKey privateKeyTemplate = new PrivateKey();
         privateKeyTemplate.getLabel().setCharArrayValue(privateKeyInfo.getKeyAlias().toCharArray());
+        privateKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PRIVATE_KEY);
         PrivateKey decryptionKey = (PrivateKey) retrieveKey(privateKeyTemplate);
         Mechanism decryptionMechanism = mechanismResolver.resolveMechanism(DECRYPT_MODE, algorithm, ciphertext);
         Cipher cipher = new Cipher();
@@ -206,11 +208,21 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
     protected void failIfMethodParametersInvalid(String algorithm, String javaSecurityProvider) throws CryptoException {
 
         if (!(javaSecurityProvider != null && javaSecurityProvider.equals("BC"))) {
-            throw new CryptoException();
+            String errorMessage = String.format("'%s' security provider is not supported by HSM Provider " +
+                    "implementation.", javaSecurityProvider);
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
+            }
+            throw new CryptoException(errorMessage);
         }
 
         if (!(algorithm != null && MechanismResolver.getMechanisms().containsKey(algorithm))) {
-            throw new CryptoException();
+            String errorMessage = String.format("Requested algorithm '%s' is not valid/supported by the " +
+                    "provider '%s'.", algorithm, javaSecurityProvider);
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
+            }
+            throw new CryptoException(errorMessage);
         }
     }
 
