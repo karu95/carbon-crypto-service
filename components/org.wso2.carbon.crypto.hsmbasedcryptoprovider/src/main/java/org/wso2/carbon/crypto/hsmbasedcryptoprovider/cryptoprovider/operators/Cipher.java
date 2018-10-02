@@ -4,6 +4,8 @@ import iaik.pkcs.pkcs11.Mechanism;
 import iaik.pkcs.pkcs11.Session;
 import iaik.pkcs.pkcs11.TokenException;
 import iaik.pkcs.pkcs11.objects.Key;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.crypto.api.CryptoException;
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.HSMCryptoException;
 
@@ -11,6 +13,8 @@ import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.HSMCryp
  * This class is responsible for carrying out encrypt/decrypt operations.
  */
 public class Cipher {
+
+    private static Log log  = LogFactory.getLog(Cipher.class);
 
     /**
      * Constructor of a Cipher instance.
@@ -40,6 +44,9 @@ public class Cipher {
             } catch (TokenException e) {
                 String errorMessage = String.format("Error occurred while encrypting data using algorithm '%s' .",
                         encryptionMechanism.getName());
+                if (log.isDebugEnabled()) {
+                    log.debug(errorMessage, e);
+                }
                 throw new HSMCryptoException(errorMessage, e);
             }
         }
@@ -68,6 +75,9 @@ public class Cipher {
             } catch (TokenException e) {
                 String errorMessage = String.format("Error occurred while decrypting data using algorithm '%s'.",
                         decryptionMechanism.getName());
+                if (log.isDebugEnabled()) {
+                    log.debug(errorMessage, e);
+                }
                 throw new HSMCryptoException(errorMessage, e);
             }
         }

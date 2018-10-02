@@ -2,6 +2,8 @@ package org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util;
 
 
 import iaik.pkcs.pkcs11.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -21,6 +23,7 @@ public class SessionHandler {
             "CryptoService.HSMBasedCryptoProviderConfig.HSMConfiguration.PKCS11Module";
     private static final String PKCS11_SLOT_CONFIGURATION_PROPERTY_PATH =
             "CryptoService.HSMBasedCryptoProviderConfig.HSMConfiguration.SlotConfiguration";
+    private static Log log = LogFactory.getLog(SessionHandler.class);
     private static SessionHandler sessionHandler;
 
     private Slot[] slotsWithTokens;
@@ -51,9 +54,16 @@ public class SessionHandler {
             pkcs11Module.initialize(null);
         } catch (IOException e) {
             String errorMessage = String.format("Unable to locate PKCS #11 Module in path '%s'.", pkcs11ModulePath);
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
             throw new CryptoException(errorMessage, e);
         } catch (TokenException e) {
-            throw new HSMCryptoException("PKCS #11 Module initialization failed.", e);
+            String errorMessage  = "PKCS #11 Module initialization failed.";
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
+            throw new HSMCryptoException(errorMessage, e);
         }
         this.serverConfigurationService = serverConfigurationService;
         setupSlotConfiguration();
@@ -74,6 +84,9 @@ public class SessionHandler {
                 slotsWithTokens = pkcs11Module.getSlotList(Module.SlotRequirement.TOKEN_PRESENT);
             } catch (TokenException e) {
                 String errorMessage = String.format("Failed to retrieve slots with tokens.");
+                if (log.isDebugEnabled()) {
+                    log.debug(errorMessage, e);
+                }
                 throw new HSMCryptoException(errorMessage, e);
             }
         }
@@ -86,10 +99,16 @@ public class SessionHandler {
                 session.login(Session.UserType.USER, getUserPIN(slotNo));
             } catch (TokenException e) {
                 String errorMessage = String.format("Session initiation failed for slot id : '%d' ", slotNo);
+                if (log.isDebugEnabled()) {
+                    log.debug(errorMessage, e);
+                }
                 throw new HSMCryptoException(errorMessage, e);
             }
         } else {
             String errorMessage = String.format("Slot '%d' is not configured for cryptographic operations.", slotNo);
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
+            }
             throw new CryptoException(errorMessage);
         }
         return session;
@@ -108,7 +127,10 @@ public class SessionHandler {
                 session.closeSession();
             } catch (TokenException e) {
                 String errorMessage = "Error occurred during session termination.";
-                throw new CryptoException(errorMessage);
+                if (log.isDebugEnabled()) {
+                    log.debug(errorMessage, e);
+                }
+                throw new HSMCryptoException(errorMessage, e);
             }
         }
     }
@@ -120,6 +142,9 @@ public class SessionHandler {
         } else {
             String errorMessage = String.format("Unable to retrieve slot configuration information for slot id " +
                     "'%d'.", slotID);
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
+            }
             throw new CryptoException(errorMessage);
         }
     }
@@ -143,6 +168,9 @@ public class SessionHandler {
             }
         } else {
             String errorMessage = "Unable to retrieve slot configuration information.";
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
+            }
             throw new CryptoException(errorMessage);
         }
     }

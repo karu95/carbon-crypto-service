@@ -127,7 +127,7 @@ public class DefaultCryptoService implements CryptoService, PrivateKeyRetriever 
                         mostSuitableInternalProvider.getClass().getCanonicalName()));
             }
 
-            return mostSuitableInternalProvider.decrypt(ciphertext, algorithm, javaSecurityAPIProvider);
+                return mostSuitableInternalProvider.decrypt(ciphertext, algorithm, javaSecurityAPIProvider);
         } else {
             String errorMessage = String.format("No internal crypto providers available. Correctly register " +
                     "a service implementation of '%s' as an OSGi service", InternalCryptoProvider.class);

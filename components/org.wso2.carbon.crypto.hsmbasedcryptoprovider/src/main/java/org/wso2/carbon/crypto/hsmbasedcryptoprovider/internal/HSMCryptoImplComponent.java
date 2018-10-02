@@ -17,7 +17,7 @@ import org.wso2.carbon.crypto.hsmbasedcryptoprovider.HSMBasedInternalCryptoProvi
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.HSMBasedKeyResolver;
 
 /**
- * The class which is used for deal with the OSGi runtime for service registration and injection.
+ * The class which is used to deal with the OSGi runtime for service registration and injection.
  */
 @Component(
         name = "org.wso2.carbon.crypto.hsmbasedcryptoprovider",
@@ -66,62 +66,6 @@ public class HSMCryptoImplComponent {
         hsmBasedKeyResolverServiceRegistration.unregister();
     }
 
-    private boolean isCryptoServiceEnabled() {
-
-        String enabled = serverConfigurationService.getFirstProperty(CRYPTO_SERVICE_ENABLING_PROPERTY_PATH);
-
-        if (!StringUtils.isBlank(enabled)) {
-
-            if (StringUtils.equals(enabled, "true")) {
-
-                return true;
-            }
-            return false;
-        }
-        return false;
-    }
-
-    private void registerProviderImplementations(BundleContext bundleContext) throws CryptoException {
-
-        ExternalCryptoProvider hsmBasedExternalCryptoProvider = getHSMBasedExternalCryptoProvider();
-
-        InternalCryptoProvider hsmBasedInternalCryptoProvider = getHSMBasedInternalCryptoProvider();
-
-        KeyResolver hsmBasedKeyResolver = getHSMBasedKeyResolver();
-
-        hsmBasedExternalCryptoProviderServiceRegistration = bundleContext.
-                registerService(ExternalCryptoProvider.class, hsmBasedExternalCryptoProvider, null);
-
-        hsmBasedInternalCryptoProviderServiceRegistration = bundleContext.
-                registerService(InternalCryptoProvider.class, hsmBasedInternalCryptoProvider, null);
-
-        hsmBasedKeyResolverServiceRegistration = bundleContext.
-                registerService(KeyResolver.class, hsmBasedKeyResolver, null);
-    }
-
-    private HSMBasedExternalCryptoProvider getHSMBasedExternalCryptoProvider() throws CryptoException {
-
-        HSMBasedExternalCryptoProvider hsmBasedExternalCryptoProvider =
-                new HSMBasedExternalCryptoProvider(this.serverConfigurationService);
-
-        return hsmBasedExternalCryptoProvider;
-    }
-
-    private HSMBasedInternalCryptoProvider getHSMBasedInternalCryptoProvider() throws CryptoException {
-
-        HSMBasedInternalCryptoProvider hsmBasedInternalCryptoProvider =
-                new HSMBasedInternalCryptoProvider(this.serverConfigurationService);
-
-        return hsmBasedInternalCryptoProvider;
-    }
-
-    private HSMBasedKeyResolver getHSMBasedKeyResolver() {
-
-        HSMBasedKeyResolver hsmBasedKeyResolver = new HSMBasedKeyResolver(this.serverConfigurationService);
-
-        return hsmBasedKeyResolver;
-    }
-
     @Reference(
             name = "serverConfigurationService",
             service = ServerConfigurationService.class,
@@ -136,5 +80,73 @@ public class HSMCryptoImplComponent {
     public void unsetServerConfigurationService(ServerConfigurationService serverConfigurationService) {
 
         this.serverConfigurationService = null;
+    }
+
+    protected boolean isCryptoServiceEnabled() {
+
+        String enabled = serverConfigurationService.getFirstProperty(CRYPTO_SERVICE_ENABLING_PROPERTY_PATH);
+
+        if (!StringUtils.isBlank(enabled)) {
+
+            if (StringUtils.equals(enabled, "true")) {
+
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+
+    protected void registerProviderImplementations(BundleContext bundleContext) throws CryptoException {
+
+        ExternalCryptoProvider hsmBasedExternalCryptoProvider = getHSMBasedExternalCryptoProvider();
+
+        InternalCryptoProvider hsmBasedInternalCryptoProvider = getHSMBasedInternalCryptoProvider();
+
+        KeyResolver hsmBasedKeyResolver = getHSMBasedKeyResolver();
+
+        hsmBasedExternalCryptoProviderServiceRegistration = bundleContext.
+                registerService(ExternalCryptoProvider.class, hsmBasedExternalCryptoProvider, null);
+        String infoMessage = "'%s' has been registered.";
+        if (log.isInfoEnabled()) {
+            log.info(String.format(infoMessage, "HSMBasedExternalCryptoProvider"));
+        }
+
+        hsmBasedInternalCryptoProviderServiceRegistration = bundleContext.
+                registerService(InternalCryptoProvider.class, hsmBasedInternalCryptoProvider, null);
+
+        if (log.isInfoEnabled()) {
+            log.info(String.format(infoMessage, "HSMBasedInternalCryptoProvider"));
+        }
+
+        hsmBasedKeyResolverServiceRegistration = bundleContext.
+                registerService(KeyResolver.class, hsmBasedKeyResolver, null);
+
+        if (log.isInfoEnabled()) {
+            log.info(String.format(infoMessage, "HSMBasedKeyResolver"));
+        }
+    }
+
+    protected HSMBasedExternalCryptoProvider getHSMBasedExternalCryptoProvider() throws CryptoException {
+
+        HSMBasedExternalCryptoProvider hsmBasedExternalCryptoProvider =
+                new HSMBasedExternalCryptoProvider(this.serverConfigurationService);
+
+        return hsmBasedExternalCryptoProvider;
+    }
+
+    protected HSMBasedInternalCryptoProvider getHSMBasedInternalCryptoProvider() throws CryptoException {
+
+        HSMBasedInternalCryptoProvider hsmBasedInternalCryptoProvider =
+                new HSMBasedInternalCryptoProvider(this.serverConfigurationService);
+
+        return hsmBasedInternalCryptoProvider;
+    }
+
+    protected HSMBasedKeyResolver getHSMBasedKeyResolver() {
+
+        HSMBasedKeyResolver hsmBasedKeyResolver = new HSMBasedKeyResolver(this.serverConfigurationService);
+
+        return hsmBasedKeyResolver;
     }
 }

@@ -5,6 +5,8 @@ import iaik.pkcs.pkcs11.Session;
 import iaik.pkcs.pkcs11.TokenException;
 import iaik.pkcs.pkcs11.objects.PrivateKey;
 import iaik.pkcs.pkcs11.objects.PublicKey;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.crypto.api.CryptoException;
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.HSMCryptoException;
 
@@ -12,6 +14,8 @@ import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.HSMCryp
  * This class is responsible for handling sign/verify operations.
  */
 public class SignatureHandler {
+
+    private static Log log = LogFactory.getLog(SignatureHandler.class);
 
     /**
      * Constructor for signature handler.
@@ -41,6 +45,9 @@ public class SignatureHandler {
             } catch (TokenException e) {
                 String errorMessage = String.format("Error occurred during generating signature using algorithm '%s'" +
                         ".", signMechanism.getName());
+                if (log.isDebugEnabled()) {
+                    log.debug(errorMessage, e);
+                }
                 throw new HSMCryptoException(errorMessage, e);
             }
         }
@@ -70,6 +77,9 @@ public class SignatureHandler {
                 if (!e.getMessage().equals("")) {
                     String errorMessage = String.format("Error occurred during verifying the signature using " +
                             "algorithm '%s'", verifyMechanism.getName());
+                    if (log.isDebugEnabled()) {
+                        log.debug(errorMessage, e);
+                    }
                     throw new HSMCryptoException(errorMessage, e);
                 }
             }

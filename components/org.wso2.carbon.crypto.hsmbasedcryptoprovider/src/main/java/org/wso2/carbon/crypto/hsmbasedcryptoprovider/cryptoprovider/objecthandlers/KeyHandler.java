@@ -4,6 +4,8 @@ import iaik.pkcs.pkcs11.Session;
 import iaik.pkcs.pkcs11.TokenException;
 import iaik.pkcs.pkcs11.objects.Key;
 import iaik.pkcs.pkcs11.objects.Object;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.crypto.api.CryptoException;
 import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.HSMCryptoException;
 
@@ -11,6 +13,8 @@ import org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util.HSMCryp
  * This class is responsible to retrieve keys from the HSM.
  */
 public class KeyHandler {
+
+    private static Log log = LogFactory.getLog(KeyHandler.class);
 
     public KeyHandler() {
     }
@@ -35,6 +39,9 @@ public class KeyHandler {
         } catch (TokenException e) {
             String errorMessage = String.format("Error occurred while retrieving key for key alias '%s'.",
                     new String(keyTemplate.getLabel().getCharArrayValue()));
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
             throw new HSMCryptoException(errorMessage, e);
         }
         return key;
