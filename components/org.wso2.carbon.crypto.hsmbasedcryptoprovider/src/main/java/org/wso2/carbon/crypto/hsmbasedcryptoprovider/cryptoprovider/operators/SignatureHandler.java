@@ -17,23 +17,27 @@ public class SignatureHandler {
 
     private static Log log = LogFactory.getLog(SignatureHandler.class);
 
+    private final Session session;
+
     /**
      * Constructor for signature handler.
+     *
+     * @param session : Session used to perform sign/verify operation.
      */
-    public SignatureHandler() {
+    public SignatureHandler(Session session) {
+        this.session = session;
     }
 
     /**
      * Method to digitally sign a given data with the given mechanism.
      *
-     * @param session       : Session used to perform signing.
      * @param dataToSign    : Data to be signed.
      * @param signMechanism : Signing mechanism
      * @param signKey       : Key used for signing.
      * @return signature as a byte array.
      * @throws CryptoException
      */
-    public byte[] sign(Session session, byte[] dataToSign,
+    public byte[] sign(byte[] dataToSign,
                        PrivateKey signKey, Mechanism signMechanism) throws CryptoException {
 
         byte[] signature = null;
@@ -50,6 +54,10 @@ public class SignatureHandler {
                 }
                 throw new HSMCryptoException(errorMessage, e);
             }
+        } else {
+            String errorMessage = String.format("Requested '%s' algorithm for data signing is not a valid " +
+                    "signing mechanism.", signMechanism.getName());
+            throw new CryptoException(errorMessage);
         }
         return signature;
     }
@@ -57,14 +65,13 @@ public class SignatureHandler {
     /**
      * Method to verify a given data with given mechanism.
      *
-     * @param session         : Session used to perform verifying.
      * @param dataToVerify    : Data to be verified.
      * @param signature       : Signature of the data.
      * @param verifyMechanism : verifying mechanism.
      * @param verificationKey : Key used for verification.
      * @return True if verified.
      */
-    public boolean verify(Session session, byte[] dataToVerify, byte[] signature,
+    public boolean verify(byte[] dataToVerify, byte[] signature,
                           PublicKey verificationKey, Mechanism verifyMechanism) throws CryptoException {
 
         boolean verified = false;
@@ -83,6 +90,10 @@ public class SignatureHandler {
                     throw new HSMCryptoException(errorMessage, e);
                 }
             }
+        } else {
+            String errorMessage = String.format("Requested '%s' algorithm for signature verification is not a " +
+                    "valid sign verification mechanism.", verifyMechanism.getName());
+            throw new CryptoException(errorMessage);
         }
         return verified;
     }

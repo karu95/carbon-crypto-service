@@ -61,9 +61,9 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         PrivateKey signingKey = (PrivateKey) retrieveKey(privateKeyTemplate);
         Mechanism signMechanism = mechanismResolver.resolveMechanism(SIGN_MODE, algorithm, data);
         Session session = initiateSession();
-        SignatureHandler signatureHandler = new SignatureHandler();
+        SignatureHandler signatureHandler = new SignatureHandler(session);
         try {
-            return signatureHandler.sign(session, data, signingKey, signMechanism);
+            return signatureHandler.sign(data, signingKey, signMechanism);
         } finally {
             sessionHandler.closeSession(session);
         }
@@ -80,10 +80,10 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         privateKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PRIVATE_KEY);
         PrivateKey decryptionKey = (PrivateKey) retrieveKey(privateKeyTemplate);
         Mechanism decryptionMechanism = mechanismResolver.resolveMechanism(DECRYPT_MODE, algorithm, ciphertext);
-        Cipher cipher = new Cipher();
         Session session = initiateSession();
+        Cipher cipher = new Cipher(session);
         try {
-            return cipher.decrypt(session, ciphertext, decryptionKey, decryptionMechanism);
+            return cipher.decrypt(ciphertext, decryptionKey, decryptionMechanism);
         } finally {
             sessionHandler.closeSession(session);
         }
@@ -101,10 +101,10 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         publicKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PUBLIC_KEY);
         PublicKey encryptionKey = (PublicKey) retrieveKey(publicKeyTemplate);
         Mechanism encryptionMechanism = mechanismResolver.resolveMechanism(ENCRYPT_MODE, algorithm, data);
-        Cipher cipher = new Cipher();
         Session session = initiateSession();
+        Cipher cipher = new Cipher(session);
         try {
-            return cipher.encrypt(session, data, encryptionKey, encryptionMechanism);
+            return cipher.encrypt(data, encryptionKey, encryptionMechanism);
         } finally {
             sessionHandler.closeSession(session);
         }
@@ -123,10 +123,10 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
         publicKeyTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_PUBLIC_KEY);
         PublicKey verificationKey = (PublicKey) retrieveKey(publicKeyTemplate);
         Mechanism verifyMechanism = mechanismResolver.resolveMechanism(VERIFY_MODE, algorithm, data);
-        SignatureHandler signatureHandler = new SignatureHandler();
         Session session = initiateSession();
+        SignatureHandler signatureHandler = new SignatureHandler(session);
         try {
-            return signatureHandler.verify(session, data, signature, verificationKey, verifyMechanism);
+            return signatureHandler.verify(data, signature, verificationKey, verifyMechanism);
         } finally {
             sessionHandler.closeSession(session);
         }
@@ -195,7 +195,8 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
     protected Session initiateSession() throws CryptoException {
 
         return sessionHandler.initiateSession(
-                Integer.parseInt(serverConfigurationService.getFirstProperty(EXTERNAL_PROVIDER_SLOT_PROPERTY_PATH)));
+                Integer.parseInt(serverConfigurationService.getFirstProperty(EXTERNAL_PROVIDER_SLOT_PROPERTY_PATH)),
+                false);
     }
 
     protected void failIfContextInformationIsMissing(CryptoContext cryptoContext) throws CryptoException {
@@ -228,10 +229,10 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
 
     protected Key retrieveKey(Key keyTemplate) throws CryptoException {
 
-        KeyHandler keyHandler = new KeyHandler();
         Session session = initiateSession();
+        KeyHandler keyHandler = new KeyHandler(session);
         try {
-            return (Key) keyHandler.retrieveKey(session, keyTemplate);
+            return (Key) keyHandler.retrieveKey(keyTemplate);
         } finally {
             sessionHandler.closeSession(session);
         }
@@ -239,13 +240,13 @@ public class HSMBasedExternalCryptoProvider implements ExternalCryptoProvider {
 
     protected Certificate retrieveCertificate(String label) throws CryptoException {
 
-        CertificateHandler certificateHandler = new CertificateHandler();
         Certificate certificateTemplate = new Certificate();
         certificateTemplate.getLabel().setCharArrayValue(label.toCharArray());
         certificateTemplate.getObjectClass().setLongValue(PKCS11Constants.CKO_CERTIFICATE);
         Session session = initiateSession();
+        CertificateHandler certificateHandler = new CertificateHandler(session);
         try {
-            return (Certificate) certificateHandler.getCertificate(session, certificateTemplate);
+            return (Certificate) certificateHandler.getCertificate(certificateTemplate);
         } finally {
             sessionHandler.closeSession(session);
         }

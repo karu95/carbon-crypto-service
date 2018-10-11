@@ -16,18 +16,25 @@ public class KeyHandler {
 
     private static Log log = LogFactory.getLog(KeyHandler.class);
 
-    public KeyHandler() {
+    private final Session session;
+
+    /**
+     * Constructor of key handler instance.
+     *
+     * @param session
+     */
+    public KeyHandler(Session session) {
+        this.session = session;
     }
 
     /**
      * Method to retrieve key when template of the key is given.
      *
-     * @param session     : Session to retrieve the key.
      * @param keyTemplate : Template of the key to be retrieved.
      * @return retrieved key
      * @throws TokenException
      */
-    public Object retrieveKey(Session session, Key keyTemplate) throws CryptoException {
+    public Object retrieveKey(Key keyTemplate) throws CryptoException {
 
         Object key = null;
         try {

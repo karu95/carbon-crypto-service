@@ -36,7 +36,6 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
     private String keyAlias;
     private SessionHandler sessionHandler;
     private MechanismResolver mechanismResolver;
-    private Cipher cipher;
 
     /**
      * Constructor of HSMBasedInternalCryptoProvider. This is an asymmetric crypto provider.
@@ -53,7 +52,6 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
         }
         sessionHandler = SessionHandler.getDefaultSessionHandler(serverConfigurationService);
         mechanismResolver = new MechanismResolver();
-        this.cipher = new Cipher();
     }
 
     @Override
@@ -66,8 +64,9 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
         PublicKey encryptionKey = (PublicKey) retrieveKey(publicKeyTemplate);
         Mechanism encryptionMechanism = mechanismResolver.resolveMechanism(ENCRYPT_MODE, algorithm, cleartext);
         Session session = initiateSession();
+        Cipher cipher = new Cipher(session);
         try {
-            return cipher.encrypt(session, cleartext, encryptionKey, encryptionMechanism);
+            return cipher.encrypt(cleartext, encryptionKey, encryptionMechanism);
         } finally {
             sessionHandler.closeSession(session);
         }
@@ -84,8 +83,9 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
         PrivateKey decryptionKey = (PrivateKey) retrieveKey(privateKeyTemplate);
         Mechanism decryptionMechanism = mechanismResolver.resolveMechanism(DECRYPT_MODE, algorithm, ciphertext);
         Session session = initiateSession();
+        Cipher cipher = new Cipher(session);
         try {
-            return cipher.decrypt(session, ciphertext, decryptionKey, decryptionMechanism);
+            return cipher.decrypt(ciphertext, decryptionKey, decryptionMechanism);
         } finally {
             sessionHandler.closeSession(session);
         }
@@ -94,7 +94,8 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
     protected Session initiateSession() throws CryptoException {
 
         return sessionHandler.initiateSession(
-                Integer.parseInt(serverConfigurationService.getFirstProperty(INTERNAL_PROVIDER_SLOT_PROPERTY_PATH)));
+                Integer.parseInt(serverConfigurationService.getFirstProperty(INTERNAL_PROVIDER_SLOT_PROPERTY_PATH)),
+                false);
     }
 
 
@@ -130,11 +131,11 @@ public class HSMBasedInternalCryptoProvider implements InternalCryptoProvider {
 
     protected Key retrieveKey(Key keyTemplate) throws CryptoException {
 
-        KeyHandler keyHandler = new KeyHandler();
         Session session = initiateSession();
+        KeyHandler keyHandler = new KeyHandler(session);
         Key retrievedKey;
         try {
-            retrievedKey = (Key) keyHandler.retrieveKey(session, keyTemplate);
+            retrievedKey = (Key) keyHandler.retrieveKey(keyTemplate);
         } finally {
             sessionHandler.closeSession(session);
         }

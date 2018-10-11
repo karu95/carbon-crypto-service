@@ -16,17 +16,24 @@ public class CertificateHandler {
 
     private static Log log = LogFactory.getLog(CertificateHandler.class);
 
-    public CertificateHandler() {
+    private final Session session;
+
+    /**
+     * Constructor of CertificateHandler instance.
+     *
+     * @param session
+     */
+    public CertificateHandler(Session session) {
+        this.session = session;
     }
 
     /**
      * Method to retrieve a given certificate from the HSM.
      *
-     * @param session             : Session to retrieve the certificate
      * @param certificateTemplate : Template of the certificate to be retrieved
      * @return retrievedCertificate
      */
-    public Object getCertificate(Session session, Certificate certificateTemplate) throws CryptoException {
+    public Object getCertificate(Certificate certificateTemplate) throws CryptoException {
 
         Object certificate = null;
         try {

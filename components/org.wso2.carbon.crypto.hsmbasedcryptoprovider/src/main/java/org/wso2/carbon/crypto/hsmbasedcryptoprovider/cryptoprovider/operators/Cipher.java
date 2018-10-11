@@ -16,23 +16,25 @@ public class Cipher {
 
     private static Log log  = LogFactory.getLog(Cipher.class);
 
+    private final Session session;
+
     /**
      * Constructor of a Cipher instance.
      */
-    public Cipher() {
+    public Cipher(Session session) {
+        this.session = session;
     }
 
     /**
      * Method to encrypt a given set of data using a given key.
      *
-     * @param session             : Instance of the session used for encryption.
      * @param dataToBeEncrypted   : Byte array of data to be encrypted.
      * @param encryptionKey       : Key used for encryption.
      * @param encryptionMechanism : Encrypting mechanism.
      * @return : Byte array of encrypted data.
      * @throws CryptoException
      */
-    public byte[] encrypt(Session session, byte[] dataToBeEncrypted,
+    public byte[] encrypt(byte[] dataToBeEncrypted,
                           Key encryptionKey, Mechanism encryptionMechanism) throws CryptoException {
 
         byte[] encryptedData = null;
@@ -49,6 +51,10 @@ public class Cipher {
                 }
                 throw new HSMCryptoException(errorMessage, e);
             }
+        } else {
+            String errorMessage = String.format("Requested '%s' algorithm for data decryption is not a valid data " +
+                    "encryption mechanism.", encryptionMechanism.getName());
+            throw new CryptoException(errorMessage);
         }
         return encryptedData;
     }
@@ -56,14 +62,13 @@ public class Cipher {
     /**
      * Method to decrypt a given set of data using a given key.
      *
-     * @param session             : Instance of the session used for decryption.
      * @param dataToBeDecrypted   : Byte array of data to be decrypted.
      * @param decryptionKey       : Key used for decryption.
      * @param decryptionMechanism : Decrypting mechanism.
      * @return : Byte array of decrypted data
      * @throws CryptoException
      */
-    public byte[] decrypt(Session session, byte[] dataToBeDecrypted,
+    public byte[] decrypt(byte[] dataToBeDecrypted,
                           Key decryptionKey, Mechanism decryptionMechanism) throws CryptoException {
 
         byte[] decryptedData = null;
@@ -80,6 +85,10 @@ public class Cipher {
                 }
                 throw new HSMCryptoException(errorMessage, e);
             }
+        } else {
+            String errorMessage = String.format("Requested '%s' algorithm for data decryption is not a valid data " +
+                    "decryption mechanism.", decryptionMechanism.getName());
+            throw new CryptoException(errorMessage);
         }
         return decryptedData;
     }

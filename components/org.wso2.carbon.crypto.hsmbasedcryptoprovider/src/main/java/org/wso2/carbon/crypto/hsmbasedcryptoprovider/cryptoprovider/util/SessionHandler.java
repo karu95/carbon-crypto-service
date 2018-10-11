@@ -47,7 +47,7 @@ public class SessionHandler {
         return sessionHandler;
     }
 
-    private SessionHandler(ServerConfigurationService serverConfigurationService) throws CryptoException {
+    protected SessionHandler(ServerConfigurationService serverConfigurationService) throws CryptoException {
         String pkcs11ModulePath = serverConfigurationService.getFirstProperty(PKCS11_MODULE_PROPERTY_PATH);
         try {
             pkcs11Module = Module.getInstance(pkcs11ModulePath);
@@ -76,7 +76,7 @@ public class SessionHandler {
      * @return Instance of a Session.
      * @throws CryptoException
      */
-    public Session initiateSession(int slotNo) throws CryptoException {
+    public Session initiateSession(int slotNo, boolean readWriteSession) throws CryptoException {
 
         Session session;
         if (slotsWithTokens == null) {
@@ -95,7 +95,7 @@ public class SessionHandler {
             try {
                 Token token = slot.getToken();
                 session = token.openSession(Token.SessionType.SERIAL_SESSION,
-                        Token.SessionReadWriteBehavior.RW_SESSION, null, null);
+                        readWriteSession, null, null);
                 session.login(Session.UserType.USER, getUserPIN(slotNo));
             } catch (TokenException e) {
                 String errorMessage = String.format("Session initiation failed for slot id : '%d' ", slotNo);
@@ -135,7 +135,7 @@ public class SessionHandler {
         }
     }
 
-    private char[] getUserPIN(int slotID) throws CryptoException {
+    protected char[] getUserPIN(int slotID) throws CryptoException {
 
         if (configuredSlots.containsKey(slotID)) {
             return configuredSlots.get(slotID).toCharArray();
@@ -149,7 +149,7 @@ public class SessionHandler {
         }
     }
 
-    private void setupSlotConfiguration() throws CryptoException {
+    protected void setupSlotConfiguration() throws CryptoException {
         NodeList configuredSlotsCandidateNodes = this.serverConfigurationService.getDocumentElement().
                 getElementsByTagName("SlotConfiguration");
         if (configuredSlotsCandidateNodes != null) {

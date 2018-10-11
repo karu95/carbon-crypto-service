@@ -119,8 +119,7 @@ public class HSMCryptoImplComponent {
             log.info(String.format(infoMessage, "HSMBasedInternalCryptoProvider"));
         }
 
-        hsmBasedKeyResolverServiceRegistration = bundleContext.
-                registerService(KeyResolver.class, hsmBasedKeyResolver, null);
+        hsmBasedKeyResolverServiceRegistration = bundleContext.registerService(KeyResolver.class, hsmBasedKeyResolver, null);
 
         if (log.isInfoEnabled()) {
             log.info(String.format(infoMessage, "HSMBasedKeyResolver"));

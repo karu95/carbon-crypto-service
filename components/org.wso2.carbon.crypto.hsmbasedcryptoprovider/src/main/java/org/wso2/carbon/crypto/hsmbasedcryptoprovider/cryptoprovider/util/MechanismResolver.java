@@ -3,7 +3,9 @@ package org.wso2.carbon.crypto.hsmbasedcryptoprovider.cryptoprovider.util;
 import iaik.pkcs.pkcs11.Mechanism;
 import iaik.pkcs.pkcs11.parameters.InitializationVectorParameters;
 import iaik.pkcs.pkcs11.parameters.RSAPkcsOaepParameters;
+import iaik.pkcs.pkcs11.parameters.RSAPkcsPssParameters;
 import iaik.pkcs.pkcs11.wrapper.PKCS11Constants;
+import org.wso2.carbon.crypto.api.CryptoException;
 
 import java.util.HashMap;
 import java.util.Random;
@@ -88,6 +90,12 @@ public class MechanismResolver {
         put("RipeMd128withRSA", PKCS11Constants.CKM_RIPEMD128_RSA_PKCS);
         put("RipeMd160withRSA", PKCS11Constants.CKM_RIPEMD160_RSA_PKCS);
 
+        put("SHA1withRSAandMGF1", PKCS11Constants.CKM_SHA1_RSA_PKCS_PSS);
+        put("SHA256withRSAandMGF1", PKCS11Constants.CKM_SHA256_RSA_PKCS_PSS);
+        put("SHA384withRSAandMGF1", PKCS11Constants.CKM_SHA384_RSA_PKCS_PSS);
+        put("SHA512withRSAandMGF1", PKCS11Constants.CKM_SHA512_RSA_PKCS_PSS);
+
+
         //DSA sign/verify mechanisms
         put("SHA1withDSA", PKCS11Constants.CKM_DSA_SHA1);
 
@@ -139,7 +147,9 @@ public class MechanismResolver {
      * @param data                   : Data used for cryptographic operation.
      * @return : Properly configured mechanism.
      */
-    public Mechanism resolveMechanism(int operatingMode, String mechanismSpecification, byte[] data) {
+    public Mechanism resolveMechanism(int operatingMode, String mechanismSpecification, byte[] data)
+            throws CryptoException {
+
         Mechanism mechanism = null;
         if (mechanisms.containsKey(mechanismSpecification)) {
             mechanism = Mechanism.get(mechanisms.get(mechanismSpecification));
@@ -150,7 +160,9 @@ public class MechanismResolver {
         return mechanism;
     }
 
-    protected void resolveParameters(Mechanism mechanism, String mechanismSpecification, int operatingMode, byte[] data) {
+    protected void resolveParameters(Mechanism mechanism, String mechanismSpecification, int operatingMode, byte[] data)
+            throws CryptoException {
+
         String parameterSpec = parameterRequiredMechanisms.get(mechanism.getMechanismCode());
         if (parameterSpec.contains("IV")) {
             int ivSize = Integer.parseInt((String)
@@ -159,17 +171,22 @@ public class MechanismResolver {
         } else if (parameterSpec.contains("OAEP")) {
             String[] specification = mechanismSpecification.split("/");
             mechanism.setParameters(getOAEPParameters(specification[specification.length - 1]));
+        } else if (parameterSpec.contains("PSS")) {
+            mechanism.setParameters(getRSAPSSParameters(mechanismSpecification));
         }
     }
 
-    protected RSAPkcsOaepParameters getOAEPParameters(String parameter) {
+    protected RSAPkcsOaepParameters getOAEPParameters(String parameter) throws CryptoException {
+
         String[] specParams = parameter.split("with");
         String[] oaepParams = specParams[1].split("and");
         if (mechanisms.containsKey(oaepParams[0])) {
             return new RSAPkcsOaepParameters(Mechanism.get(mechanisms.get(oaepParams[0])), 1L,
                     PKCS11Constants.CKZ_DATA_SPECIFIED, null);
+        } else {
+            String errorMessage = String.format("Invalid '%s' OAEP parameter specification", parameter);
+            throw new CryptoException(errorMessage);
         }
-        return null;
     }
 
     protected InitializationVectorParameters getInitializationVectorParameters(int operatingMode,
@@ -181,5 +198,25 @@ public class MechanismResolver {
             System.arraycopy(data, 0, iv, 0, ivSize);
         }
         return new InitializationVectorParameters(iv);
+    }
+
+    protected RSAPkcsPssParameters getRSAPSSParameters(String algorithmSpecification) throws CryptoException {
+
+        if (algorithmSpecification.contains("SHA1")) {
+            return new RSAPkcsPssParameters(Mechanism.get(mechanisms.get("SHA1")), 1L,
+                    20L);
+        } else if (algorithmSpecification.contains("SHA256")) {
+            return new RSAPkcsPssParameters(Mechanism.get(mechanisms.get("SHA256")), 1L,
+                    32L);
+        } else if (algorithmSpecification.contains("SHA384")) {
+            return new RSAPkcsPssParameters(Mechanism.get(mechanisms.get("SHA384")), 1L,
+                    48L);
+        } else if (algorithmSpecification.contains("SHA512")) {
+            return new RSAPkcsPssParameters(Mechanism.get(mechanisms.get("SHA512")), 1L,
+                    64L);
+        } else {
+            String errorMessage = String.format("Invalid '%s' algorithm specification", algorithmSpecification);
+            throw new CryptoException(errorMessage);
+        }
     }
 }
